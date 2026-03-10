@@ -1,0 +1,14 @@
+[
+  {
+    "cpt_code": "11042",
+    "description": "Debridement, subcutaneous tissue, first 20 sq cm or less",
+    "rationale": "The procedure, performed in the operating room, explicitly documents the debridement of necrotic skin and subcutaneous tissue.",
+    "official_description": "CPT code 11042 is for the debridement of subcutaneous tissue for wounds up to 20 square centimeters or less."
+  },
+  {
+    "cpt_code": "97606",
+    "description": "Negative pressure wound therapy, > 50 sq cm",
+    "rationale": "The note describes the detailed application of a VAC system to a large wound extending from the right axilla to the abdomen, indicating a surface area greater than 50 sq cm.",
+    "official_description": "Neg press wound tx > 50 cm"
+  }
+]
