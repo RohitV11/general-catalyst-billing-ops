@@ -1,5 +1,6 @@
 pandas
 anthropic
 streamlit
+openpyxl
 google-generativeai
 python-dotenv

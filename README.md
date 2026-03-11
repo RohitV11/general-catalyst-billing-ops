@@ -9,6 +9,16 @@ For every PR, make the edits you are merging as details as possible in the PR me
 Data folder:
 Create a save a folder in the home directory called data where you will store all the csvs/txt files from the drive.
 
+## Data needed for constraints.py
+
+For `constraints.py`, make sure to download the 4 PTP edit table Excel files
+
+
+- `ccipra-v321r0-f1.xlsx`
+- `ccipra-v321r0-f2.xlsx`
+- `ccipra-v321r0-f3.xlsx`
+- `ccipra-v321r0-f4.xlsx`
+
 
 To run the LLM parser, first load the folder data in the Task 3 folder from the shared google drive. Then, put the data folder in the directory at the src level (not in src). Run the dhs_code_parser file first, and then run the parser.py file second. Additionally, make sure to add a .env file using your specific Gemini API key. 
 
