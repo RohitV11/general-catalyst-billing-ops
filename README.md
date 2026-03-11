@@ -9,6 +9,36 @@ For every PR, make the edits you are merging as details as possible in the PR me
 Data folder:
 Create a save a folder in the home directory called data where you will store all the csvs/txt files from the drive.
 
+## Instructions for pricer.py
+
+Download the CMS Annual Physician Fee Schedule Payment Amount File (PFALL26AR.txt). Place the file in the project data directory:
+
+general-catalyst-billing-ops/
+│
+├── data/
+│   └── PFALL26AR.txt
+│   └── ...
+│
+├── src/
+│   └── pricer.py
+│   └── ...
+|
+├── ...
+
+To run the script, run "python pricer.py" from the src directory.
+
+Command line arguments can be provided to specify which file path to load data from, which HCPCS code to search for, and which locality and carrier numbers to use. Specifically:
+
+--file_path FILE_PATH
+                    Path to the Annual Physician Fee Schedule Payment Amount File, default value: ../data/PFALL26AR.txt
+--hcpcs_code HCPCS_CODE
+                    HCPCS code, default value: 0446T
+--locality LOCALITY 
+                    Locality number, default value: 00 (Ohio)
+--carrier CARRIER   
+                    Carrier number, default value: 15202 (Ohio)
+
+A SQLite database, prices.db, will be created and stored in the data directory. This database contains the data from `PFALL26AR.txt` loaded into SQLite.
 ## Data needed for constraints.py
 
 For `constraints.py`, make sure to download the 4 PTP edit table Excel files
