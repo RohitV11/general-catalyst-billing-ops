@@ -74,3 +74,39 @@ from src.parser import load_cpt_code_dict, parse_note, model, CPT_JSON_FILE
 note_text = Path("/absolute/path/to/file.txt").read_text(encoding="utf-8", errors="ignore")
 valid_codes_dict = load_cpt_code_dict(CPT_JSON_FILE)
 result = parse_note(note_text, valid_codes_dict, model)
+```
+
+## Optimizer usage
+
+`optimizer.py` takes the structured parser output (list of items with `cpt_code`) from stdin and returns the highest-reimbursing valid subsets after pairwise `check_pair` validation. Identifies whether codes in a subset are valid regularly or valid with modifier.
+
+Run from repo root:
+
+```bash
+python3 src/optimizer.py < path/to/codes.json
+```
+
+Expected input shape:
+
+```json
+[
+  {"cpt_code": "97597"},
+  {"cpt_code": "11042"}
+]
+```
+
+Output shape:
+
+```json
+{
+  "input_codes": ["97597", "11042"],
+  "subsets": [
+    {
+      "codes": ["97597"],
+      "total_reimbursement": 48.92,
+      "requires_modifier": false,
+      "code_statuses": [{"cpt_code": "97597", "status": "valid"}]
+    }
+  ]
+}
+```
