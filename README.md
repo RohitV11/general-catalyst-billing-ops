@@ -22,3 +22,13 @@ Sample LLM Parser JSON Format:
     "official_description": "Psych diag eval w/med srvcs"
   }
 ]
+
+
+Sample Usage
+
+```from pathlib import Path
+from src.parser import load_cpt_code_dict, parse_note, model, CPT_JSON_FILE
+
+note_text = Path("/absolute/path/to/file.txt").read_text(encoding="utf-8", errors="ignore")
+valid_codes_dict = load_cpt_code_dict(CPT_JSON_FILE)
+result = parse_note(note_text, valid_codes_dict, model)
