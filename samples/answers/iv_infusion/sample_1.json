@@ -1,0 +1,14 @@
+[
+  {
+    "cpt_code": "93620",
+    "description": "Comprehensive electrophysiologic evaluation with induction of arrhythmia",
+    "rationale": "The report explicitly documents 'Comprehensive electrophysiology studies with attempted arrhythmia induction'. It details the placement of three catheters (right ventricular apex, right atrial appendage, His bundle), recording of conduction intervals, and programmed ventricular stimulation from the RV apex and outflow tracts.",
+    "official_description": "CPT code 93620 is used for an electrophysiology evaluation, a procedure to assess the electrical activity and pathways of the heart."
+  },
+  {
+    "cpt_code": "93623",
+    "description": "Programmed stimulation and pacing after intravenous drug infusion",
+    "rationale": "The report documents 'IV Procainamide infusion for Brugada syndrome' and states 'Procainamide was then infused, 20 mg/kg over 10 minutes' to assess for arrhythmia, which is an add-on service to the primary EP study.",
+    "official_description": "CPT code 93623 is used for procedures involving stimulation pacing of the heart, helping healthcare providers document and track medical services."
+  }
+]

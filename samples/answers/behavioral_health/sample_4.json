@@ -1,0 +1,8 @@
+[
+  {
+    "cpt_code": "93000",
+    "description": "Electrocardiogram (EKG)",
+    "rationale": "The note explicitly states 'EKG was also done'.",
+    "official_description": "CPT code 93000 is used for a complete electrocardiogram, which records the heart's electrical activity to help diagnose heart conditions."
+  }
+]
