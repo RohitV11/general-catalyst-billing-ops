@@ -8,3 +8,6 @@ For every PR, make the edits you are merging as details as possible in the PR me
 
 Data folder:
 Create a save a folder in the home directory called data where you will store all the csvs/txt files from the drive.
+
+
+To run the LLM parser, first load the folder data in the Task 3 folder from the shared google drive. Then, put the data folder in the directory at the src level (not in src). Run the dhs_code_parser file first, and then run the parser.py file second. Additionally, make sure to add a .env file using your specific Gemini API key. 
