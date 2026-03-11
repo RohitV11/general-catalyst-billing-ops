@@ -1,8 +1,0 @@
-[
-  {
-    "cpt_code": "99221",
-    "description": "Initial hospital inpatient care, low complexity",
-    "rationale": "The note documents the physician's evaluation and management for a patient's admission to the hospital ('She was then admitted'). It includes a history of present illness, past medical history, review of lab data, and an assessment and plan, supporting an initial hospital care E/M service.",
-    "official_description": "CPT code 99221 is used for initial hospital inpatient or observation care, per day, with straightforward or low medical decision making."
-  }
-]

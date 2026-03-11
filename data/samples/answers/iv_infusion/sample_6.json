@@ -1,8 +1,0 @@
-[
-  {
-    "cpt_code": "75574",
-    "description": "Computed tomographic angiography (CTA), heart, with contrast, including 3D image postprocessing",
-    "rationale": "The note documents a multi-detector CT of the heart with IV contrast administration ('95 cc of Isovue was administered'). It includes coronary artery calcium scoring ('The patient's total Agatston calcium score is: 115'), detailed analysis of coronary artery anatomy, and functional analysis ('Ejection fraction: 58 percent'), which are all components of a CCTA.",
-    "official_description": "CPT code 75574 is for a CT angiography of the heart with 3D imaging, used to visualize blood vessels and assess heart conditions."
-  }
-]
