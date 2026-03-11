@@ -11,3 +11,14 @@ Create a save a folder in the home directory called data where you will store al
 
 
 To run the LLM parser, first load the folder data in the Task 3 folder from the shared google drive. Then, put the data folder in the directory at the src level (not in src). Run the dhs_code_parser file first, and then run the parser.py file second. Additionally, make sure to add a .env file using your specific Gemini API key. 
+
+Sample LLM Parser JSON Format:
+
+[
+  {
+    "cpt_code": "90792",
+    "description": "Psychiatric diagnostic evaluation with medical services",
+    "rationale": "The note documents a comprehensive initial psychiatric evaluation, including a history of present illness, past psychiatric and medical history, a detailed mental status examination ...  .",
+    "official_description": "Psych diag eval w/med srvcs"
+  }
+]
