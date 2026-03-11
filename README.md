@@ -26,7 +26,8 @@ Sample LLM Parser JSON Format:
 
 Sample Usage
 
-```from pathlib import Path
+```
+from pathlib import Path
 from src.parser import load_cpt_code_dict, parse_note, model, CPT_JSON_FILE
 
 note_text = Path("/absolute/path/to/file.txt").read_text(encoding="utf-8", errors="ignore")
