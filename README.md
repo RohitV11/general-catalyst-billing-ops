@@ -9,10 +9,28 @@ For every PR, make the edits you are merging as details as possible in the PR me
 Data folder:
 Create a save a folder in the home directory called data where you will store all the csvs/txt files from the drive.
 
+## General data instructions
+Set up a data directory:
+
+'''
+general-catalyst-billing-ops/
+│
+├── data/
+│   └── PFALL24R.txt
+│   └── ccipra-v321-f1.xlsx
+│   └── ccipra-v321-f2.xlsx
+│   └── ccipra-v321-f3.xlsx
+│   └── ccipra-v321-f4.xlsx
+│   └── cpt_codes_deduped.csv
+│   └── 2026_DHS_Code_List_Addendum_12_01_2025 (2).txt
+'''
+
+
 ## Instructions for pricer.py
 
 Download the CMS Annual Physician Fee Schedule Payment Amount File (PFALL26AR.txt). Place the file in the project data directory:
 
+'''
 general-catalyst-billing-ops/
 │
 ├── data/
@@ -22,8 +40,9 @@ general-catalyst-billing-ops/
 ├── src/
 │   └── pricer.py
 │   └── ...
-|
+│
 ├── ...
+'''
 
 To run the script, run "python pricer.py" from the src directory.
 
@@ -78,7 +97,7 @@ result = parse_note(note_text, valid_codes_dict, model)
 
 ## Optimizer usage
 
-`optimizer.py` takes the structured parser output (list of items with `cpt_code`) from stdin and returns the highest-reimbursing valid subsets after pairwise `check_pair` validation. Identifies whether codes in a subset are valid regularly or valid with modifier.
+`optimizer.py` takes the structured parser output (list of items with `cpt_code`) from stdin and returns the single highest-reimbursing code plus the single highest-reimbursing valid subset after pairwise `check_pair` validation. The subset output identifies whether any included codes require modifiers.
 
 Run from repo root:
 
@@ -100,13 +119,17 @@ Output shape:
 ```json
 {
   "input_codes": ["97597", "11042"],
-  "subsets": [
-    {
-      "codes": ["97597"],
-      "total_reimbursement": 48.92,
-      "requires_modifier": false,
-      "code_statuses": [{"cpt_code": "97597", "status": "valid"}]
-    }
-  ]
+  "highest_reimbursing_code": {
+    "cpt_code": "11042",
+    "total_reimbursement": 137.16,
+    "requires_modifier": false,
+    "status": "valid"
+  },
+  "highest_reimbursing_subset": {
+    "codes": ["97597"],
+    "total_reimbursement": 48.92,
+    "requires_modifier": false,
+    "code_statuses": [{"cpt_code": "97597", "status": "valid"}]
+  }
 }
 ```

@@ -50,8 +50,8 @@ if __name__ == "__main__":
         description="A script that accepts a file path to the Annual Physician Fee Schedule Payment " \
         "Amount File and a HCPCS code, and returns the corresponding Facility Fee Schedule Amount."
     )
-    parser.add_argument("--file_path", default="../data/PFALL26AR.txt", help="Path to the Annual Physician " \
-    "Fee Schedule Payment Amount File, default value: ../data/PFALL26AR.txt")
+    parser.add_argument("--file_path", default="../data/PFALL24R.txt", help="Path to the Annual Physician " \
+    "Fee Schedule Payment Amount File, default value: ../data/PFALL24R.txt")
     parser.add_argument("--hcpcs_code", default="0446T", help="HCPCS code, default value: 0446T")
     parser.add_argument("--locality", default="00", help="Locality number, default value: 00 (Ohio)")
     parser.add_argument("--carrier", default="15202", help="Carrier number, default value: 15202 (Ohio)")

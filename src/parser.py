@@ -1,15 +1,11 @@
 import json
 import os
+import sqlite3
 from pathlib import Path
 
 from dotenv import load_dotenv
-import google.generativeai as genai
-
-try:
-    from pricer import code_prices
-except Exception:
-    code_prices = None
-
+from google import genai
+from google.genai import types
 
 # Load env vars from both project root and src folder.
 CURRENT_DIR = Path(__file__).resolve().parent
@@ -18,17 +14,17 @@ load_dotenv(PROJECT_ROOT / ".env")
 load_dotenv(CURRENT_DIR / ".env")
 
 API_KEY = os.getenv("GEMINI_API_KEY")
-MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-2.5-pro")
+MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
 if not API_KEY:
     raise ValueError("Please set the GEMINI_API_KEY environment variable.")
 
-genai.configure(api_key=API_KEY)
-model = genai.GenerativeModel(MODEL_NAME)
+client = genai.Client(api_key=API_KEY)
 
 CPT_JSON_FILE = str(PROJECT_ROOT / "data" / "cpt_code_dict.json")
-SAMPLES_DIR = PROJECT_ROOT / "data" / "samples"
+SAMPLES_DIR = PROJECT_ROOT / "samples"
 ANSWERS_DIR = SAMPLES_DIR / "answers"
+PRICES_DB_FILE = PROJECT_ROOT / "data" / "prices.db"
 
 
 def _stage(name: str, value=None) -> None:
@@ -40,26 +36,24 @@ def _stage(name: str, value=None) -> None:
             print(value)
 
 
-def load_priced_code_set() -> set[str]:
-    if not callable(code_prices):
-        _stage("load_priced_code_set.skip", "pricer.code_prices is unavailable.")
-        return set()
+def load_all_priced_codes() -> set[str]:
+    if not PRICES_DB_FILE.is_file():
+        raise FileNotFoundError(f"Pricing database not found at {PRICES_DB_FILE}")
 
+    conn = sqlite3.connect(PRICES_DB_FILE)
     try:
-        prices = code_prices()
-    except Exception as exc:
-        _stage("load_priced_code_set.error", f"code_prices() failed: {exc}")
-        return set()
+        rows = conn.execute("SELECT DISTINCT [HCPCS Code] FROM Prices").fetchall()
+    finally:
+        conn.close()
 
-    if isinstance(prices, dict):
-        priced_codes = {str(k).strip() for k in prices.keys() if str(k).strip()}
-    elif isinstance(prices, list):
-        priced_codes = {str(k).strip() for k in prices if str(k).strip()}
-    else:
-        _stage(
-            "load_priced_code_set.error",
-            f"Unsupported code_prices() return type: {type(prices).__name__}",
-        )
+    return {str(code).strip() for (code,) in rows if str(code).strip()}
+
+
+def load_priced_code_set() -> set[str]:
+    try:
+        priced_codes = load_all_priced_codes()
+    except Exception as exc:
+        _stage("load_priced_code_set.error", f"load_all_priced_codes() failed: {exc}")
         return set()
 
     _stage("load_priced_code_set.done", {"total_priced_codes": len(priced_codes)})
@@ -97,11 +91,12 @@ def _extract_json_text(text: str) -> str:
     return stripped
 
 
-def _gemini_json(model_client, prompt: str) -> dict:
+def _gemini_json(client, prompt: str) -> dict:
     _stage("gemini.request.prompt", prompt)
-    response = model_client.generate_content(
-        prompt,
-        generation_config=genai.GenerationConfig(
+    response = client.models.generate_content(
+        model=MODEL_NAME,
+        contents=prompt,
+        config=types.GenerateContentConfig(
             temperature=0,
             response_mime_type="application/json",
         ),
@@ -116,7 +111,7 @@ def _gemini_json(model_client, prompt: str) -> dict:
     return parsed
 
 
-def validate_descriptions_batch(model, extracted_items: list[dict], valid_codes_dict: dict[str, str]) -> dict[str, bool]:
+def validate_descriptions_batch(client, extracted_items: list[dict], valid_codes_dict: dict[str, str]) -> dict[str, bool]:
     """
     Ask Gemini whether each generated description reasonably matches the
     official description from cpt_code_dict.json.
@@ -171,7 +166,7 @@ Items:
 """
 
     try:
-        response_data = _gemini_json(model, prompt)
+        response_data = _gemini_json(client, prompt)
         results = response_data.get("results", [])
         if not isinstance(results, list):
             return {}
@@ -189,7 +184,7 @@ Items:
         return {}
 
 
-def parse_note(note_text: str, valid_codes_dict: dict[str, str], model) -> list[dict]:
+def parse_note(note_text: str, valid_codes_dict: dict[str, str], client) -> list[dict]:
     _stage("parse_note.start", {"note_preview": note_text.strip()[:300]})
     priced_codes = load_priced_code_set()
     has_pricer_codes = bool(priced_codes)
@@ -226,7 +221,7 @@ Clinical note:
 """
 
     try:
-        response_data = _gemini_json(model, extraction_prompt)
+        response_data = _gemini_json(client, extraction_prompt)
         codes = response_data.get("items", [])
         _stage("parse_note.extracted_items", codes)
 
@@ -238,7 +233,7 @@ Clinical note:
         return []
 
     # First filter: code must exist in cpt dictionary.
-    # Secondary check: try pricer.code_prices() as a supplemental signal.
+    # Secondary check: try the pricing database as a supplemental signal.
     candidates = []
     for item in codes:
         if not isinstance(item, dict):
@@ -253,7 +248,7 @@ Clinical note:
             if has_pricer_codes and not is_in_pricer:
                 _stage(
                     "parse_note.pricer_miss_non_blocking",
-                    {"cpt_code": cpt_code, "note": "Accepted by CPT dictionary; not found in code_prices()."},
+                    {"cpt_code": cpt_code, "note": "Accepted by CPT dictionary; not found in pricing database."},
                 )
         else:
             _stage(
@@ -271,7 +266,7 @@ Clinical note:
     _stage("parse_note.candidates", candidates)
 
     # Second filter: generated description must align with official file meaning
-    match_map = validate_descriptions_batch(model, candidates, valid_codes_dict)
+    match_map = validate_descriptions_batch(client, candidates, valid_codes_dict)
 
     filtered = []
     for item in candidates:
@@ -305,7 +300,7 @@ def output_path_for_sample(sample_path: Path) -> Path:
     return ANSWERS_DIR / relative.parent / out_name
 
 
-def run_all_samples(valid_codes_dict: dict[str, str], model) -> None:
+def run_all_samples(valid_codes_dict: dict[str, str], client) -> None:
     _stage("run_all_samples.start", {"samples_dir": str(SAMPLES_DIR), "answers_dir": str(ANSWERS_DIR)})
     ANSWERS_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -320,7 +315,7 @@ def run_all_samples(valid_codes_dict: dict[str, str], model) -> None:
             _stage("run_all_samples.sample_read_error", {"file": str(sample_file), "error": str(exc)})
             continue
 
-        result = parse_note(note_text, valid_codes_dict, model)
+        result = parse_note(note_text, valid_codes_dict, client)
         out_path = output_path_for_sample(sample_file)
         out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_text(json.dumps(result, indent=2), encoding="utf-8")
@@ -332,4 +327,4 @@ def run_all_samples(valid_codes_dict: dict[str, str], model) -> None:
 if __name__ == "__main__":
     _stage("main.start", {"model": MODEL_NAME, "cpt_json_file": CPT_JSON_FILE})
     valid_codes_dict = load_cpt_code_dict(CPT_JSON_FILE)
-    run_all_samples(valid_codes_dict, model)
+    run_all_samples(valid_codes_dict, client)
