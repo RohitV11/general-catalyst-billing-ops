@@ -281,6 +281,20 @@ Clinical note:
     _stage("parse_note.final_filtered", filtered)
     return filtered
 
+# Uses cpt_code_dict.json as the source of truth for valid codes
+def process_single_note(
+    note_text: str,
+    valid_codes_dict: dict[str, str] | None = None,
+    gemini_client=None,
+) -> list[dict]:
+    """
+    Process one note through the same Gemini extraction and validation flow
+    used by the sample runner.
+    """
+    codes_dict = valid_codes_dict if valid_codes_dict is not None else load_cpt_code_dict(CPT_JSON_FILE)
+    active_client = gemini_client if gemini_client is not None else client
+    return parse_note(note_text, codes_dict, active_client)
+
 
 def iter_sample_files(samples_dir: Path):
     for path in sorted(samples_dir.rglob("*")):
@@ -315,7 +329,11 @@ def run_all_samples(valid_codes_dict: dict[str, str], client) -> None:
             _stage("run_all_samples.sample_read_error", {"file": str(sample_file), "error": str(exc)})
             continue
 
-        result = parse_note(note_text, valid_codes_dict, client)
+        result = process_single_note(
+            note_text,
+            valid_codes_dict=valid_codes_dict,
+            gemini_client=client,
+        )
         out_path = output_path_for_sample(sample_file)
         out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_text(json.dumps(result, indent=2), encoding="utf-8")
