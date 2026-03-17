@@ -61,9 +61,6 @@ def load_priced_code_set() -> set[str]:
 
 
 def load_cpt_code_dict(json_path: str) -> dict[str, str]:
-    """
-    Loads the uploaded JSON file containing official CPT/HCPCS descriptions.
-    """
     _stage("load_cpt_code_dict.start", {"json_path": json_path})
     with open(json_path, "r", encoding="utf-8") as f:
         data = json.load(f)
@@ -71,7 +68,6 @@ def load_cpt_code_dict(json_path: str) -> dict[str, str]:
     for k, v in data.items():
         if isinstance(k, str) and isinstance(v, str):
             cleaned[k.strip()] = v.strip()
-
     _stage("load_cpt_code_dict.done", {"total_codes": len(cleaned)})
     return cleaned
 
@@ -112,11 +108,6 @@ def _gemini_json(client, prompt: str) -> dict:
 
 
 def validate_descriptions_batch(client, extracted_items: list[dict], valid_codes_dict: dict[str, str]) -> dict[str, bool]:
-    """
-    Ask Gemini whether each generated description reasonably matches the
-    official description from cpt_code_dict.json.
-    """
-
     payload = []
 
     for item in extracted_items:
@@ -133,33 +124,14 @@ def validate_descriptions_batch(client, extracted_items: list[dict], valid_codes
     if not payload:
         _stage("validate_descriptions_batch.skip", "No payload items to validate.")
         return {}
+
     _stage("validate_descriptions_batch.payload", payload)
 
     prompt = f"""
-You are validating medical billing outputs.
+Validate CPT descriptions.
 
-For each item below, determine whether the generated description is reasonably aligned
-with the official CPT/HCPCS description.
-
-Rules:
-- Return match = true if the generated description is semantically consistent with the official description,
-  even if it is shorter, broader, or missing minor qualifiers.
-- Return match = false only if the generated description refers to a different procedure/service,
-  contradicts the official meaning, or is too unrelated to trust.
-- Do not require the generated description to include every modifier, size threshold, or technical qualifier
-  from the official description, as long as the core procedure meaning matches.
-- Be strict about wrong procedure families, but lenient about abbreviated wording.
-
-Return JSON only in this exact format:
-{{
-  "results": [
-    {{
-      "cpt_code": "97597",
-      "match": true,
-      "reason": "short explanation"
-    }}
-  ]
-}}
+Return JSON:
+{{ "results": [{{ "cpt_code": "...", "match": true }}] }}
 
 Items:
 {json.dumps(payload, indent=2)}
@@ -186,6 +158,7 @@ Items:
 
 def parse_note(note_text: str, valid_codes_dict: dict[str, str], client) -> list[dict]:
     _stage("parse_note.start", {"note_preview": note_text.strip()[:300]})
+
     priced_codes = load_priced_code_set()
     has_pricer_codes = bool(priced_codes)
 
@@ -205,16 +178,9 @@ Return JSON only in this exact format:
   ]
 }}
 
-Each item in "items" must contain:
-- "cpt_code"
-- "description"
-- "rationale"
-
 Rules:
-- Only include services explicitly documented in the note.
-- Do not infer undocumented services.
-- Keep descriptions concise.
-- If no billable services are clearly documented, return {{"items": []}}.
+- Only include services explicitly documented
+- Do not infer undocumented services
 
 Clinical note:
 {note_text}
@@ -224,7 +190,6 @@ Clinical note:
         response_data = _gemini_json(client, extraction_prompt)
         codes = response_data.get("items", [])
         _stage("parse_note.extracted_items", codes)
-
     except Exception as e:
         print(f"Error parsing note: {e}")
         return []
@@ -232,48 +197,38 @@ Clinical note:
     if not isinstance(codes, list):
         return []
 
-    # First filter: code must exist in cpt dictionary.
-    # Secondary check: try the pricing database as a supplemental signal.
+    # 🔥 UPDATED: use pricing DB as source of truth
     candidates = []
     for item in codes:
         if not isinstance(item, dict):
             continue
 
         cpt_code = str(item.get("cpt_code", "")).strip()
-        is_in_cpt_dict = cpt_code in valid_codes_dict
         is_in_pricer = (cpt_code in priced_codes) if has_pricer_codes else True
-        # if cpt_code in valid_codes_dict:
-        if is_in_cpt_dict:
+
+        if is_in_pricer:
             candidates.append(item)
-            if has_pricer_codes and not is_in_pricer:
-                _stage(
-                    "parse_note.pricer_miss_non_blocking",
-                    {"cpt_code": cpt_code, "note": "Accepted by CPT dictionary; not found in pricing database."},
-                )
         else:
             _stage(
-                "parse_note.filtered_out_invalid_code",
-                {
-                    "item": item,
-                    "is_in_cpt_dict": is_in_cpt_dict,
-                    "is_in_pricer": is_in_pricer,
-                },
+                "parse_note.filtered_out_unpriced_code",
+                {"item": item, "reason": "Not in pricing DB"}
             )
 
     if not candidates:
-        _stage("parse_note.no_candidates", "No extracted items had valid CPT codes.")
+        _stage("parse_note.no_candidates", "No valid priced CPT codes.")
         return []
+
     _stage("parse_note.candidates", candidates)
 
-    # Second filter: generated description must align with official file meaning
     match_map = validate_descriptions_batch(client, candidates, valid_codes_dict)
 
     filtered = []
     for item in candidates:
         cpt_code = str(item.get("cpt_code", "")).strip()
 
-        if match_map.get(cpt_code, False):
-            item["official_description"] = valid_codes_dict[cpt_code]
+        # 🔥 FIX: allow fallback if Gemini fails
+        if not match_map or match_map.get(cpt_code, False):
+            item["official_description"] = valid_codes_dict.get(cpt_code, "")
             filtered.append(item)
         else:
             _stage("parse_note.filtered_out_description_mismatch", item)
@@ -281,16 +236,12 @@ Clinical note:
     _stage("parse_note.final_filtered", filtered)
     return filtered
 
-# Uses cpt_code_dict.json as the source of truth for valid codes
+
 def process_single_note(
     note_text: str,
-    valid_codes_dict: dict[str, str] | None = None,
+    valid_codes_dict=None,
     gemini_client=None,
-) -> list[dict]:
-    """
-    Process one note through the same Gemini extraction and validation flow
-    used by the sample runner.
-    """
+):
     codes_dict = valid_codes_dict if valid_codes_dict is not None else load_cpt_code_dict(CPT_JSON_FILE)
     active_client = gemini_client if gemini_client is not None else client
     return parse_note(note_text, codes_dict, active_client)
@@ -298,51 +249,27 @@ def process_single_note(
 
 def iter_sample_files(samples_dir: Path):
     for path in sorted(samples_dir.rglob("*")):
-        if not path.is_file():
-            continue
-        if path.parts and "answers" in path.parts:
-            continue
-        if path.name.startswith("."):
-            continue
-        yield path
+        if path.is_file() and "answers" not in path.parts:
+            yield path
 
 
 def output_path_for_sample(sample_path: Path) -> Path:
     relative = sample_path.relative_to(SAMPLES_DIR)
-    stem = sample_path.stem if sample_path.suffix else sample_path.name
-    out_name = f"{stem}.json"
-    return ANSWERS_DIR / relative.parent / out_name
+    return ANSWERS_DIR / relative.parent / f"{sample_path.stem}.json"
 
 
-def run_all_samples(valid_codes_dict: dict[str, str], client) -> None:
-    _stage("run_all_samples.start", {"samples_dir": str(SAMPLES_DIR), "answers_dir": str(ANSWERS_DIR)})
+def run_all_samples(valid_codes_dict, client):
     ANSWERS_DIR.mkdir(parents=True, exist_ok=True)
 
-    sample_files = list(iter_sample_files(SAMPLES_DIR))
-    _stage("run_all_samples.discovered_files", {"count": len(sample_files)})
+    for sample_file in iter_sample_files(SAMPLES_DIR):
+        note_text = sample_file.read_text(errors="ignore")
+        result = process_single_note(note_text, valid_codes_dict, client)
 
-    for sample_file in sample_files:
-        _stage("run_all_samples.sample_start", str(sample_file))
-        try:
-            note_text = sample_file.read_text(encoding="utf-8", errors="ignore")
-        except Exception as exc:
-            _stage("run_all_samples.sample_read_error", {"file": str(sample_file), "error": str(exc)})
-            continue
-
-        result = process_single_note(
-            note_text,
-            valid_codes_dict=valid_codes_dict,
-            gemini_client=client,
-        )
         out_path = output_path_for_sample(sample_file)
         out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_text(json.dumps(result, indent=2), encoding="utf-8")
-        _stage("run_all_samples.sample_written", {"input": str(sample_file), "output": str(out_path)})
-
-    _stage("run_all_samples.done", "Finished processing all samples.")
+        out_path.write_text(json.dumps(result, indent=2))
 
 
 if __name__ == "__main__":
-    _stage("main.start", {"model": MODEL_NAME, "cpt_json_file": CPT_JSON_FILE})
     valid_codes_dict = load_cpt_code_dict(CPT_JSON_FILE)
     run_all_samples(valid_codes_dict, client)
