@@ -12,16 +12,18 @@ Create a save a folder in the home directory called data where you will store al
 ## General data instructions
 Set up a data directory:
 
-general-catalyst-billing-ops/
-└── data/
-├── PFALL24R.txt
-├── ccipra-v321-f1.xlsx
-├── ccipra-v321-f2.xlsx
-├── ccipra-v321-f3.xlsx
-├── ccipra-v321-f4.xlsx
-├── cpt_codes_deduped.csv
-└── 2026_DHS_Code_List_Addendum_12_01_2025 (2).txt
 
+```
+general-catalyst-billing-ops/
+├── data/
+│   ├── PFALL24R.txt
+│   ├── ccipra-v321-f1.xlsx
+│   ├── ccipra-v321-f2.xlsx
+│   ├── ccipra-v321-f3.xlsx
+│   ├── ccipra-v321-f4.xlsx
+│   ├── cpt_codes_deduped.csv
+│   └── 2026_DHS_Code_List_Addendum_12_01_2025 (2).txt
+```
 ## Instructions for pricer.py
 
 Download the CMS Annual Physician Fee Schedule Payment Amount File (PFALL26AR.txt). Place the file in the project data directory:
