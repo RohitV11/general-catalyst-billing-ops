@@ -44,14 +44,23 @@ To run the script, run "python pricer.py" from the src directory.
 
 Command line arguments can be provided to specify which file path to load data from, which HCPCS code to search for, and which locality and carrier numbers to use. Specifically:
 
+```
 --file_path FILE_PATH
-                    Path to the Annual Physician Fee Schedule Payment Amount File, default value: ../data/PFALL26AR.txt
+    Path to the Annual Physician Fee Schedule Payment Amount File  
+    Default: ../data/PFALL26AR.txt
+
 --hcpcs_code HCPCS_CODE
-                    HCPCS code, default value: 0446T
---locality LOCALITY 
-                    Locality number, default value: 00 (Ohio)
---carrier CARRIER   
-                    Carrier number, default value: 15202 (Ohio)
+    HCPCS code  
+    Default: 0446T
+
+--locality LOCALITY
+    Locality number  
+    Default: 00 (Ohio)
+
+--carrier CARRIER
+    Carrier number  
+    Default: 15202 (Ohio)
+```
 
 A SQLite database, prices.db, will be created and stored in the data directory. This database contains the data from `PFALL26AR.txt` loaded into SQLite.
 ## Data needed for constraints.py
