@@ -80,7 +80,7 @@ def save_code_dict_as_json(txt_path: str, csv_path: str, json_path: str) -> dict
 
 if __name__ == "__main__":
     txt_file = "data/2026_DHS_Code_List_Addendum_12_01_2025 (2).txt"
-    csv_file = "data/cpt_codes_deduped - cpt_codes_deduped.csv"
+    csv_file = "data/cpt_codes_deduped.csv"
     if not os.path.exists(csv_file):
         csv_file = "data/cpt_codes.csv"
     out_file = "data/cpt_code_dict.json"

@@ -5,8 +5,7 @@ from typing import Any
 from constraints import check_pair
 from pricer import code_price
 
-
-# Converts a raw price value into a float with safe defaults for missing/bad inputs.
+# converts raw price value into float
 def _to_float(value: Any) -> float:
     if value is None:
         return 0.0
@@ -22,8 +21,7 @@ def _to_float(value: Any) -> float:
     except ValueError:
         return 0.0
 
-
-# Looks up one CPT/HCPCS code's facility fee amount for a given locality/carrier.
+# looks up one CPT code's fee.
 def _facility_price_for_code(cpt_code: str, locality: str, carrier: str) -> float:
     result = code_price(cpt_code, locality, carrier)
     if result is None or result.empty:
@@ -32,8 +30,7 @@ def _facility_price_for_code(cpt_code: str, locality: str, carrier: str) -> floa
     value = result.iloc[0]["Facility Fee Schedule Amount"]
     return _to_float(value)
 
-
-# Checks all code pairs in a subset and flags whether any codes require a modifier.
+# checks all code pairs in a subset and flags whether any codes require a modifier.
 def _pairwise_status(subset_codes: tuple[str, ...]) -> tuple[bool, set[str]]:
     modifier_required_codes: set[str] = set()
     for code1, code2 in combinations(subset_codes, 2):
@@ -45,8 +42,7 @@ def _pairwise_status(subset_codes: tuple[str, ...]) -> tuple[bool, set[str]]:
             modifier_required_codes.add(code2)
     return True, modifier_required_codes
 
-
-# Builds the structured JSON payload for one valid subset and its per-code status.
+# builds the structured JSON payload for one valid subset and its per-code status.
 def _build_subset_payload(
     subset_codes: tuple[str, ...],
     modifier_required_codes: set[str],
@@ -60,18 +56,17 @@ def _build_subset_payload(
 
     return {
         "codes": list(subset_codes),
-        "total_reimbursement": round(total, 6),
+        "total_reimbursement": round(total, 2),
         "requires_modifier": bool(modifier_required_codes),
         "code_statuses": code_statuses,
     }
 
-
-# Applies selection ordering rules based on reimbursement and modifier requirements.
+# returns the highest reimbursing valid subsets, preferring those that do not require modifiers.
 def _select_subsets_by_modifier_rule(valid_subsets: list[dict[str, Any]]) -> list[dict[str, Any]]:
     if not valid_subsets:
         return []
 
-    # Higher reimbursement first; tie-breaker prefers no-modifier subsets.
+    # higher reimbursement first, tie breaker prefers subsets with no modifier.
     ranked = sorted(
         valid_subsets,
         key=lambda row: (-float(row["total_reimbursement"]), bool(row["requires_modifier"])),
@@ -87,8 +82,7 @@ def _select_subsets_by_modifier_rule(valid_subsets: list[dict[str, Any]]) -> lis
             break
     return selected
 
-
-# Finds and returns highest-reimbursing valid subsets from parsed note code output.
+# finds and returns highest reimbursing valid subsets from parsed note code output.
 def optimize_code_subsets(
     parsed_note_items: list[dict[str, Any]],
     locality: str = "00",
@@ -122,6 +116,72 @@ def optimize_code_subsets(
     }
 
 
+def find_highest_reimbursing_code_and_subset(
+    parsed_note_items: list[dict[str, Any]],
+    locality: str = "00",
+    carrier: str = "15202",
+) -> dict[str, Any]:
+    codes = []
+    for item in parsed_note_items:
+        if not isinstance(item, dict):
+            continue
+        code = str(item.get("cpt_code", "")).strip()
+        if code:
+            codes.append(code)
+
+    if not codes:
+        return {
+            "input_codes": [],
+            "highest_reimbursing_code": None,
+            "highest_reimbursing_subset": None,
+        }
+
+    price_cache = {code: _facility_price_for_code(code, locality, carrier) for code in codes}
+
+    highest_reimbursing_code = max(
+        (
+            {
+                "cpt_code": code,
+                "total_reimbursement": round(price_cache[code], 2),
+                "requires_modifier": False,
+                "status": "valid",
+            }
+            for code in codes
+        ),
+        key=lambda row: row["total_reimbursement"],
+    )
+
+    valid_subsets: list[dict[str, Any]] = []
+    for subset_size in range(1, len(codes) + 1):
+        for subset_codes in combinations(codes, subset_size):
+            allowed, modifier_required_codes = _pairwise_status(subset_codes)
+            if not allowed:
+                continue
+            valid_subsets.append(
+                _build_subset_payload(subset_codes, modifier_required_codes, price_cache)
+            )
+
+    highest_reimbursing_subset = None
+    if valid_subsets:
+        highest_reimbursing_subset = max(
+            valid_subsets,
+            key=lambda row: (
+                float(row["total_reimbursement"]),
+                len(row["codes"]),
+                not bool(row["requires_modifier"]),
+            ),
+        )
+
+    return {
+        "input_codes": codes,
+        "highest_reimbursing_code": highest_reimbursing_code,
+        "highest_reimbursing_subset": highest_reimbursing_subset,
+        "delta": round(
+            highest_reimbursing_subset["total_reimbursement"] - highest_reimbursing_code["total_reimbursement"],
+            2,
+        ) if highest_reimbursing_subset else 0.00,
+    }
+
 if __name__ == "__main__":
     # Optional local runner: pass parse_note output JSON (list of objects) on stdin.
     import sys
@@ -136,5 +196,5 @@ if __name__ == "__main__":
         print(json.dumps({"error": "Expected a JSON list of parse_note items."}, indent=2))
         raise SystemExit(1)
 
-    output = optimize_code_subsets(parsed_items)
+    output = find_highest_reimbursing_code_and_subset(parsed_items)
     print(json.dumps(output, indent=2))
