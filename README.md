@@ -138,3 +138,11 @@ Output shape:
   }
 }
 ```
+
+## Testing
+
+To run the full test suite, install pytest and run from the repo root:
+
+
+pip install pytest
+python3 -m pytest testing/ -v
