@@ -28,19 +28,17 @@ general-catalyst-billing-ops/
 
 Download the CMS Annual Physician Fee Schedule Payment Amount File (PFALL26AR.txt). Place the file in the project data directory:
 
-'''
+## 📁 Project Structure
+```
 general-catalyst-billing-ops/
-│
 ├── data/
-│   └── PFALL26AR.txt
+│   ├── PFALL26AR.txt
 │   └── ...
-│
 ├── src/
-│   └── pricer.py
+│   ├── pricer.py
 │   └── ...
-│
-├── ...
-'''
+└── ...
+```
 
 To run the script, run "python pricer.py" from the src directory.
 
